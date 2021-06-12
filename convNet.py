@@ -22,10 +22,14 @@ def plotBatch(dim, batch):
 # Load dataset
 
 class MNISTDataSet(Dataset):
-    def __init__(self, file_path):
+    def __init__(self, file_path, test=False):
         d = pd.read_csv(file_path)
-        self.labels = torch.tensor(d['label'], dtype=torch.long)
-        self.data = torch.tensor(d.drop('label', axis=1).values, dtype=torch.float).view(-1, 1, H, W)
+        if not test:
+            self.labels = torch.tensor(d['label'], dtype=torch.long)
+            self.data = torch.tensor(d.drop('label', axis=1).values, dtype=torch.float).view(-1, 1, H, W)
+        else:
+            self.labels = torch.empty(len(d), dtype=torch.float)
+            self.data = torch.tensor(d.values, dtype=torch.float).view(-1, 1, H, W)
         return
     
     def __len__(self):
@@ -85,3 +89,14 @@ with torch.no_grad():
     correct = predicted == val_set[:]['label']
     accuracy = sum(correct) / len(correct)
     print(accuracy)
+
+# Create Kaggle submission
+
+mnist_test = MNISTDataSet('test.csv', test=True)
+with torch.no_grad():
+    outputs = net(mnist_test[:]['data'])
+    _, predicted = torch.max(outputs, 1)
+
+submission = pd.DataFrame(predicted, columns=["Label"])
+submission.index += 1
+submission.to_csv("submission.csv", sep=",", index_label="ImageId")
