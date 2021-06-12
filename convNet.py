@@ -1,8 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
 import pandas as pd
-import os
-from torch.utils.data import Dataset, DataLoader, dataloader
+from torch.utils.data import Dataset, DataLoader, dataloader, random_split
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -60,8 +59,8 @@ class ConvNet(nn.Module):
 
 # Train
 
-mnist = MNISTDataSet('train.csv')
-batch = DataLoader(mnist, 16)
+train_set, val_set = random_split(MNISTDataSet('train.csv'), [35000, 7000])
+batch = DataLoader(train_set, 16)
 net = ConvNet()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(net.parameters(), lr=0.001)
@@ -71,7 +70,7 @@ for i, sample in enumerate(batch):
     pred = net(sample['data'])
     loss = criterion(pred, sample['label'])
     avg_loss += loss
-    if i % 99 == 0:
+    if (i + 1) % 100 == 0:
         avg_loss /= 100
         print(f"Batch {i} Avg Loss {avg_loss}")
         avg_loss = 0
@@ -79,3 +78,10 @@ for i, sample in enumerate(batch):
     optimizer.step()
 
 # Evaluate
+
+with torch.no_grad():
+    outputs = net(val_set[:]['data'])
+    _, predicted = torch.max(outputs, 1)
+    correct = predicted == val_set[:]['label']
+    accuracy = sum(correct) / len(correct)
+    print(accuracy)
